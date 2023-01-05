@@ -17,6 +17,7 @@
 #include "breadthfirst.h"
 #include "depthfirst.h"
 #include "preorder.h"
+#include "inorder.h"
 
 #define COOLDOWN_LIMIT 25
 #define VISIT_RATE 25
@@ -275,7 +276,7 @@ int main()
         }
 
         if(ImGui::CollapsingHeader("Algorithms", ImGuiTreeNodeFlags_DefaultOpen)){
-            const char* items[] = { "Depth First", "Breadth First", "Preorder"};
+            const char* items[] = { "Depth First", "Breadth First", "Preorder", "Inorder"};
             static int item_current = 0;
             ImGui::ListBox("##", &item_current, items, IM_ARRAYSIZE(items), (int)(sizeof(items) / sizeof(*items)));
             if (ImGui::Button("Traverse")) {
@@ -291,6 +292,9 @@ int main()
                     break;
                 case 2:
                     visited = preorder(adjacencyList, startNode);
+                    break;
+                case 3:
+                    visited = inorder(adjacencyList, startNode);
                     break;
                 }
             }
@@ -352,6 +356,7 @@ int main()
                 loadGraph(files, selectedIndex, nodes, adjacencyList, startNode);
                 at = 0;
                 upto = 0;
+                nodeIndex = nodes.size();
             }
             
         }
