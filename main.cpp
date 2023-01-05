@@ -5,9 +5,15 @@
 #include <SFML/Graphics.hpp>
 #include <imgui-SFML.h>
 #include <imgui.h>
+#include <implot.h>
+
+#include "scrollingBuffer.h"
 
 #include "breadthfirst.h"
 #include "depthfirst.h"
+
+#define COOLDOWN_LIMIT 25
+#define VISIT_RATE 25
 
 int insideNode(std::vector<std::tuple<int, int, int>>& nodes, sf::Vector2i& pos, float& r, bool draw) {
     for (auto& node : nodes) {
@@ -43,6 +49,7 @@ void cleanList(std::map<int, std::vector<int>>& adjacencyList, int& nodeIn, std:
 }
 
 void connectNodes(int connect[2], std::map<int, std::vector<int>>& adjacencyList) {
+    if(connect[0] == -1 | connect[1] == -1){ return; }
     if(connect[0] == connect[1]){ return; }
     if(std::find(adjacencyList[connect[0]].begin(), adjacencyList[connect[0]].end(), connect[1]) != adjacencyList[connect[0]].end()){ return; }
     // Make checks for more than two connections and being connected to by more than one
@@ -77,11 +84,19 @@ void printAdj(std::map<int, std::vector<int>>& adj){
 
 }
 
+void stepFrames(float* frameHist, float t){
+    for(int i = 1; i < 1000; i++){
+        frameHist[i - 1] = frameHist[i];
+    }
+    frameHist[999] = t;
+}
+
 int main()
 {
     constexpr int WIDTH = 1400;
     constexpr int HEIGHT = 950;
     sf::RenderWindow window(sf::VideoMode(WIDTH, HEIGHT), "Graph Traversal Algorithms");
+    window.setFramerateLimit(120);
     window.setPosition(sf::Vector2i(0, 0));
 
     auto image = sf::Image{};
@@ -92,6 +107,8 @@ int main()
     }
     window.setIcon(image.getSize().x, image.getSize().y, image.getPixelsPtr());
     ImGui::SFML::Init(window);
+    ImGui::CreateContext();
+    ImPlot::CreateContext();
 
     //                     <id,  x,   y>
     std::vector<std::tuple<int, int, int>> nodes;
@@ -108,6 +125,9 @@ int main()
     float selectColour[3] = { (float)50 / 255, (float)255 / 255, (float)50 / 255 };
     float visitColour[3] = { (float)0 / 255, (float)17 / 255, (float)191 / 255 };
     float startColour[3] = { (float)255 / 255, (float)255 / 255, (float)255 / 255 };
+
+    float frameHist[1000] = {0};
+    ScrollingBuffer frameData;
     
     int startNode = 0;
 
@@ -117,6 +137,10 @@ int main()
     bool running = false;
     int connect[2] = { -1, -1 };
     std::pair<int, int> nullCoords = { -1, -1 };
+
+    sf::Clock fpsClock;
+    float time = 0;
+    static float plott = 0;
 
     sf::Clock deltaClock;
     while (window.isOpen())
@@ -128,8 +152,7 @@ int main()
             if (event.type == sf::Event::Closed) {
                 window.close();
             }
-            else if ((!running) && (coolDown > 100) && (sf::Mouse::isButtonPressed(sf::Mouse::Right))) {
-                //std::cout << "MOUSE PRESSED\n";
+            else if ((!running) && (coolDown > COOLDOWN_LIMIT) && (sf::Mouse::isButtonPressed(sf::Mouse::Right))) {
                 sf::Vector2i pos = sf::Mouse::getPosition(window);
                 if (insideNode(nodes, pos, nodeRadius, true) == -1) {
                     std::tuple<int, int, int> temp = { nodeIndex, pos.x, pos.y};
@@ -139,25 +162,18 @@ int main()
                 else {
                     int nodeIn = insideNode(nodes, pos, nodeRadius, false);
                     if (nodeIn > -1) {
-                        //std::cout << "1\n";
                         for (int i = 0; i < nodes.size(); i++) {
-                            //std::cout << "2\n";
                             if (nodeIn == std::get<0>(nodes[i])) {
-                                //std::cout << "3\n";
                                 nodes.erase(nodes.begin() + i);
-                                //std::cout << "4\n";
                                 cleanList(adjacencyList, nodeIn, nodes);
-                                //std::cout << "5\n";
-                                //nodeIndex = 0;
                                 upto = 0;
-                                at = 0;
                             }
                         }
                     }
                 }
                 coolDown = 0;
             }
-            else if ((!running) && (coolDown > 100) && (sf::Mouse::isButtonPressed(sf::Mouse::Left))) {
+            else if ((!running) && (coolDown > COOLDOWN_LIMIT) && (sf::Mouse::isButtonPressed(sf::Mouse::Left))) {
                 sf::Vector2i pos = sf::Mouse::getPosition(window);
                 int nodeIn = insideNode(nodes, pos, nodeRadius, false);
                 if(sf::Keyboard::isKeyPressed(sf::Keyboard::LControl)){
@@ -182,30 +198,29 @@ int main()
         ImGui::SFML::Update(window, deltaClock.restart());
 
         //ImGui::ShowDemoWindow();
+        //ImPlot::ShowDemoWindow();
 
+        ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(10, 10));
+        ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 10);
+        ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 10);
         ImGui::Begin("##", NULL, ImGuiWindowFlags_AlwaysAutoResize);
         ImGui::SetWindowPos(ImVec2(0, 0));
+        
 
-        ImGui::SetNextItemOpen(true);
-        if(ImGui::CollapsingHeader("Instructions")){
-            //ImGui::Begin("Instructions", NULL, ImGuiWindowFlags_AlwaysAutoResize);
+        if(ImGui::CollapsingHeader("Instructions", ImGuiTreeNodeFlags_DefaultOpen)){
             ImGui::BulletText("RClick to add and remove nodes");
             ImGui::BulletText("LClick to select nodes");
             ImGui::Indent();
             ImGui::BulletText("Select two nodes to connect them");
             ImGui::Unindent();
             ImGui::BulletText("CTRL+RClick to set start node");
-            //ImGui::End();
         }
 
-        ImGui::SetNextItemOpen(true);
-        if(ImGui::CollapsingHeader("Algorithms")){
-            //ImGui::Begin("Algorithms", NULL, ImGuiWindowFlags_AlwaysAutoResize);
+        if(ImGui::CollapsingHeader("Algorithms", ImGuiTreeNodeFlags_DefaultOpen)){
             const char* items[] = { "Depth First", "Breadth First", "Preorder"};
             static int item_current = 0;
             ImGui::ListBox("##", &item_current, items, IM_ARRAYSIZE(items), (int)(sizeof(items) / sizeof(*items)));
             if (ImGui::Button("Traverse")) {
-                //printAdj(adjacencyList);
                 running = true;
                 visited.clear();
                 switch (item_current) {
@@ -220,18 +235,11 @@ int main()
                     //preOrder(adjacencyList, 0, visited);
                     break;
                 }
-                /* for (auto& f : visited) {
-                    std::cout << f << ' ';
-                }
-                std::cout << '\n'; */
             }
             if (ImGui::Button("Stop")) { running = false; }
-            //ImGui::End();
         }
 
-        ImGui::SetNextItemOpen(true);
-        if(ImGui::CollapsingHeader("Customise")){
-            //ImGui::Begin("Customise", NULL, ImGuiWindowFlags_AlwaysAutoResize);
+        if(ImGui::CollapsingHeader("Customise", ImGuiTreeNodeFlags_DefaultOpen)){
             ImGui::Text("Number of nodes: %i", nodes.size());
             ImGui::Checkbox("Show Nodes", &showNodes);
             ImGui::SliderFloat("Node Size", &nodeRadius, 0.0f, 100.0f);
@@ -245,14 +253,35 @@ int main()
             if (ImGui::Button("Clear All Nodes")) {
                 reset(nodes, adjacencyList, nodeIndex);
                 at = 0;
+                upto = 0;
                 running = false;
             }
-            //ImGui::End();
         }
 
         ImGui::End();
+        ImGui::PopStyleVar(3);
 
-        ImGui::Begin("Adjacency List", NULL, ImGuiWindowFlags_NoTitleBar);
+        ImGui::Begin("Frame Rate", NULL, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize);
+        ImGui::SetWindowPos(ImVec2(600, 0));
+        ImGui::SetWindowSize(ImVec2(400, 170));
+        time = fpsClock.getElapsedTime().asSeconds();
+        time = 1.0 / time;
+        fpsClock.restart();
+        plott += ImGui::GetIO().DeltaTime;
+        frameData.AddPoint(plott, time);
+        static ImPlotAxisFlags flags = ImPlotAxisFlags_NoTickLabels;
+        if(ImPlot::BeginPlot("##", ImVec2(-1, 150))){
+            ImPlot::SetupAxes(NULL, NULL, flags, flags);
+            ImPlot::SetupAxisLimits(ImAxis_X1, plott - 10, plott, ImGuiCond_Always);
+            ImPlot::SetupAxisLimits(ImAxis_Y1,0,200);
+            ImPlot::PushStyleColor(ImGuiCol_Text, ImVec4(0, 0, 1, 1));
+            ImPlot::PlotLine(std::to_string(time).c_str(), &frameData.Data[0].x, &frameData.Data[0].y, frameData.Data.size(), 0, frameData.Offset, 2*sizeof(float));
+            ImPlot::PopStyleColor();
+            ImPlot::EndPlot();
+        }
+        ImGui::End();
+
+        ImGui::Begin("Adjacency List", NULL, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize);
         ImGui::SetWindowPos(ImVec2(1000, 0));
         ImGui::SetWindowSize(ImVec2(400, HEIGHT));
         std::string s = "";
@@ -273,13 +302,11 @@ int main()
 
         //Draw Visiting
         if (running) {
-            //std::cout << "RUNNING\n";
             at++;
-            if (at == 100) {
+            if (at == VISIT_RATE) {
                 at = 0;
                 upto++;
             }
-            //std::cout << visited.size() <<' '<<upto << '\n';
             if (upto == visited.size()) { upto = 0; }
             float r = (float)nodeRadius * 1.2;
             shape.setFillColor(makeColour(visitColour));
@@ -360,7 +387,7 @@ int main()
         ImGui::SFML::Render(window);
         window.display();
     }
-
+    ImPlot::DestroyContext();
+    ImGui::DestroyContext();
     ImGui::SFML::Shutdown();
-    return 0;
 }
