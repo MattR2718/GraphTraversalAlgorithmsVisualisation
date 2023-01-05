@@ -273,7 +273,7 @@ int main()
             ImGui::Indent();
             ImGui::BulletText("Select two nodes to connect them");
             ImGui::Unindent();
-            ImGui::BulletText("CTRL+RClick to set start node");
+            ImGui::BulletText("CTRL+LClick to set start node");
         }
 
         if(ImGui::CollapsingHeader("Algorithms", ImGuiTreeNodeFlags_DefaultOpen)){
