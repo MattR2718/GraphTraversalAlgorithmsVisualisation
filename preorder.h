@@ -1,3 +1,6 @@
+#ifndef PREORDER_H
+#define PREORDER_H
+
 #include <vector>
 #include <stack>
 #include <map>
@@ -18,3 +21,5 @@ std::vector<int> preorder(std::map<int, std::vector<int>>& adj, int start){
 
     return visited;
 }
+
+#endif

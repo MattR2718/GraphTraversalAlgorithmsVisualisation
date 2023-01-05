@@ -1,3 +1,6 @@
+#ifndef DEPTHFIRST_H
+#define DEPTHFIRST_H
+
 #include <vector>
 #include <map>
 #include <stack>
@@ -17,8 +20,9 @@ std::vector<int> depthFirst(std::map<int, std::vector<int>>& adj, int start)
             if(std::find(visited.begin(), visited.end(), adj[curr][i]) == visited.end()){ stack.push(adj[curr][i]); }
         }
         visited.push_back(curr);
-
     }
 
 	return visited;
 }
+
+#endif

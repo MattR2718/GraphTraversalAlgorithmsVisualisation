@@ -1,3 +1,6 @@
+#ifndef INORDER_H
+#define INORDER_H
+
 #include <vector>
 #include <stack>
 #include <map>
@@ -33,3 +36,5 @@ std::vector<int> inorder(std::map<int, std::vector<int>>& adj, int start){
 
     return visited;
 }
+
+#endif

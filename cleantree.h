@@ -1,5 +1,6 @@
 #ifndef CLEANTREE_H
 #define CLEANTREE_H
+
 #include <queue>
 
 void cleanTree(std::map<int, std::vector<int>>& adj, int start){
@@ -24,4 +25,5 @@ void cleanTree(std::map<int, std::vector<int>>& adj, int start){
         }
     }
 }
+
 #endif

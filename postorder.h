@@ -1,3 +1,6 @@
+#ifndef POSTORDER_H
+#define POSTORDER_H
+
 #include <vector>
 #include <stack>
 #include <map>
@@ -33,3 +36,5 @@ cleanTree(adj, start);
 
     return visited;
 }
+
+#endif

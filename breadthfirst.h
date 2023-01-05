@@ -1,3 +1,6 @@
+#ifndef BREADTHFIRST_H
+#define BREADTHFIRST_H
+
 #include <vector>
 #include <queue>
 #include <map>
@@ -20,3 +23,5 @@ std::vector<int> breadthFirst(std::map<int, std::vector<int>>& adj, int start)
 
 	return visited;
 }
+
+#endif
