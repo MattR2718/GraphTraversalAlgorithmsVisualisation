@@ -18,6 +18,7 @@
 #include "depthfirst.h"
 #include "preorder.h"
 #include "inorder.h"
+#include "postorder.h"
 
 #define COOLDOWN_LIMIT 25
 #define VISIT_RATE 25
@@ -276,7 +277,7 @@ int main()
         }
 
         if(ImGui::CollapsingHeader("Algorithms", ImGuiTreeNodeFlags_DefaultOpen)){
-            const char* items[] = { "Depth First", "Breadth First", "Preorder", "Inorder"};
+            const char* items[] = { "Depth First", "Breadth First", "Preorder", "Inorder", "Postorder"};
             static int item_current = 0;
             ImGui::ListBox("##", &item_current, items, IM_ARRAYSIZE(items), (int)(sizeof(items) / sizeof(*items)));
             if (ImGui::Button("Traverse")) {
@@ -295,6 +296,9 @@ int main()
                     break;
                 case 3:
                     visited = inorder(adjacencyList, startNode);
+                    break;
+                case 4:
+                    visited = postorder(adjacencyList, startNode);
                     break;
                 }
             }
