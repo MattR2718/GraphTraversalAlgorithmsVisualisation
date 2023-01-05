@@ -1,6 +1,11 @@
 #include <iostream>
 #include <vector>
 #include <tuple>
+#include <filesystem>
+#include <string>
+#include <regex>
+#include <map>
+#include <fstream>
 
 #include <SFML/Graphics.hpp>
 #include <imgui-SFML.h>
@@ -84,16 +89,61 @@ void printAdj(std::map<int, std::vector<int>>& adj){
 
 }
 
-void stepFrames(float* frameHist, float t){
-    for(int i = 1; i < 1000; i++){
-        frameHist[i - 1] = frameHist[i];
+void loadFiles(std::vector<std::string>& files){
+    files.clear();
+    std::regex ex("[.]*\\\\([a-zA-z]+).txt");
+    std::smatch m;
+    for(const auto& file : std::filesystem::directory_iterator("../graphs")){
+        std::string str = file.path().string();
+        std::string fileString = "";
+        while (std::regex_search(str, m, ex)) {
+            fileString += m[1];
+            str = m.suffix().str();
+        }
+        files.push_back(fileString);
     }
-    frameHist[999] = t;
+}
+
+void loadGraph(const std::vector<std::string>& files, const int selectedIndex, std::vector<std::tuple<int, int, int>>& nodes, std::map<int, std::vector<int>>& adjacencyList, int& start){
+    std::ifstream file("../graphs/" + files[selectedIndex] + ".txt");
+    std::string linetxt;
+    bool gettingNodes = true;
+    bool gettingAdj = false;
+    bool getStart = false;
+    nodes.clear();
+    adjacencyList.clear();
+    while(std::getline(file, linetxt)){
+        if(linetxt.length() == 0){
+            if(gettingNodes){ gettingNodes = false; gettingAdj = true; continue;}
+            if(gettingAdj){ gettingAdj = false; getStart = true; continue;}
+        }else{
+            if(gettingNodes){
+                std::stringstream ss(linetxt);
+                int i, x, y;
+                ss >> i >> x >> y;
+                std::tuple<int, int, int> n{i, x, y};
+                nodes.emplace_back(n);
+            }else if(gettingAdj){
+                std::vector<int> nums;
+                std::stringstream ss(linetxt);
+                std::string token;
+                while(std::getline(ss, token, ' ')){
+                    nums.emplace_back(std::stoi(token));
+                }
+                adjacencyList[nums[0]];
+                for(int i = 1; i < nums.size(); i++){
+                    adjacencyList[nums[0]].emplace_back(nums[i]);
+                }
+            }else{
+                start = std::stoi(linetxt);
+            }
+        }
+    }
 }
 
 int main()
 {
-    constexpr int WIDTH = 1400;
+    constexpr int WIDTH = 1600;
     constexpr int HEIGHT = 950;
     sf::RenderWindow window(sf::VideoMode(WIDTH, HEIGHT), "Graph Traversal Algorithms");
     window.setFramerateLimit(120);
@@ -106,7 +156,7 @@ int main()
         // Error handling...
     }
     window.setIcon(image.getSize().x, image.getSize().y, image.getPixelsPtr());
-    ImGui::SFML::Init(window);
+    auto _ = ImGui::SFML::Init(window);
     ImGui::CreateContext();
     ImPlot::CreateContext();
 
@@ -128,7 +178,10 @@ int main()
 
     float frameHist[1000] = {0};
     ScrollingBuffer frameData;
-    
+
+    std::vector<std::string> files;
+    loadFiles(files);
+
     int startNode = 0;
 
     int coolDown = 0;
@@ -137,6 +190,10 @@ int main()
     bool running = false;
     int connect[2] = { -1, -1 };
     std::pair<int, int> nullCoords = { -1, -1 };
+
+    int selectedIndex = 0;
+    std::string saveFileName{""};
+    std::map<std::string, std::pair<std::vector<std::tuple<int, int, int>>, std::map<int, std::vector<int>>>> saved;
 
     sf::Clock fpsClock;
     float time = 0;
@@ -239,6 +296,65 @@ int main()
             if (ImGui::Button("Stop")) { running = false; }
         }
 
+        if(ImGui::CollapsingHeader("Load/Save", ImGuiTreeNodeFlags_DefaultOpen)){
+            if (ImGui::BeginCombo("##Files", files[selectedIndex].c_str())) {
+                for (int i = 0; i < files.size(); ++i) {
+                    const bool isSelected = (selectedIndex == i);
+                    if (ImGui::Selectable(files[i].c_str(), isSelected)) {
+                        selectedIndex = i;
+                    }
+                    if (isSelected) {
+                        ImGui::SetItemDefaultFocus();
+                    }
+                }
+                ImGui::EndCombo();
+            }
+
+
+            if(ImGui::Button("Update")){
+                loadFiles(files);
+            }
+
+            if(ImGui::Button("Save")){
+                ImGui::OpenPopup("Save Graph");
+            }
+            if(ImGui::BeginPopupModal("Save Graph", NULL, ImGuiWindowFlags_AlwaysAutoResize)){
+                char buf[255]{};
+                strncpy_s( buf, saveFileName.c_str(), sizeof(buf)-1 );
+                ImGui::InputText( "Enter Graph Name... ", buf, sizeof(buf) );
+                saveFileName = buf;
+                saveFileName.erase(remove_if(saveFileName.begin(), saveFileName.end(), isspace), saveFileName.end());
+                std::string path = "../graphs/" + saveFileName + ".txt";
+                if(ImGui::Button("Save")){
+                    std::ofstream saveFile(path);
+                    for(auto& n : nodes){
+                        saveFile << std::get<0>(n) << ' ' << std::get<1>(n) << ' ' << std::get<2>(n) << '\n';
+                    }
+                    saveFile << '\n';
+                    for(auto& a : adjacencyList){
+                        saveFile << a.first << ' ';
+                        for(auto& n : a.second){
+                            saveFile << n << ' ';
+                        }
+                        saveFile << '\n';
+                    }
+                    saveFile << '\n' << startNode;
+                    saveFile.close();
+                    saveFileName = "";
+                    loadFiles(files);
+                    ImGui::CloseCurrentPopup();
+                }
+                ImGui::EndPopup();
+            }
+
+            if(ImGui::Button("Load")){
+                loadGraph(files, selectedIndex, nodes, adjacencyList, startNode);
+                at = 0;
+                upto = 0;
+            }
+            
+        }
+
         if(ImGui::CollapsingHeader("Customise", ImGuiTreeNodeFlags_DefaultOpen)){
             ImGui::Text("Number of nodes: %i", nodes.size());
             ImGui::Checkbox("Show Nodes", &showNodes);
@@ -262,7 +378,7 @@ int main()
         ImGui::PopStyleVar(3);
 
         ImGui::Begin("Frame Rate", NULL, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize);
-        ImGui::SetWindowPos(ImVec2(600, 0));
+        ImGui::SetWindowPos(ImVec2(WIDTH - 800, 0));
         ImGui::SetWindowSize(ImVec2(400, 170));
         time = fpsClock.getElapsedTime().asSeconds();
         time = 1.0 / time;
@@ -282,7 +398,7 @@ int main()
         ImGui::End();
 
         ImGui::Begin("Adjacency List", NULL, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize);
-        ImGui::SetWindowPos(ImVec2(1000, 0));
+        ImGui::SetWindowPos(ImVec2(WIDTH - 400, 0));
         ImGui::SetWindowSize(ImVec2(400, HEIGHT));
         std::string s = "";
         for(auto& a : adjacencyList){
