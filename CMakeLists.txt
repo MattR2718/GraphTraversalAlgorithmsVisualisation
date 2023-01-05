@@ -1,11 +1,14 @@
 cmake_minimum_required(VERSION 3.0.0)
 project(GraphTraversal VERSION 0.1.0)
 
-include(CTest)
-enable_testing()
+find_package(SFML REQUIRED COMPONENTS graphics system window)
+find_package(imgui CONFIG REQUIRED)
+find_package(ImGui-SFML CONFIG REQUIRED)
 
-add_executable(GraphTraversal main.cpp)
+add_executable(${PROJECT_NAME} main.cpp algorithms.cpp)
 
-set(CPACK_PROJECT_NAME ${PROJECT_NAME})
-set(CPACK_PROJECT_VERSION ${PROJECT_VERSION})
-include(CPack)
+target_link_libraries(${PROJECT_NAME}
+    imgui::imgui
+    sfml-graphics sfml-system sfml-window
+    ImGui-SFML::ImGui-SFML
+)
