@@ -16,6 +16,7 @@
 
 #include "breadthfirst.h"
 #include "depthfirst.h"
+#include "preorder.h"
 
 #define COOLDOWN_LIMIT 25
 #define VISIT_RATE 25
@@ -278,6 +279,7 @@ int main()
             static int item_current = 0;
             ImGui::ListBox("##", &item_current, items, IM_ARRAYSIZE(items), (int)(sizeof(items) / sizeof(*items)));
             if (ImGui::Button("Traverse")) {
+                upto = 0;
                 running = true;
                 visited.clear();
                 switch (item_current) {
@@ -288,8 +290,7 @@ int main()
                     visited = breadthFirst(adjacencyList, startNode);
                     break;
                 case 2:
-                    //std::cout << "TETETET\n";
-                    //preOrder(adjacencyList, 0, visited);
+                    visited = preorder(adjacencyList, startNode);
                     break;
                 }
             }
@@ -429,11 +430,12 @@ int main()
             shape.setOrigin(r, r);
             shape.setRadius(r);
             shape.setPointCount(circleSegments);
-            for (int i = 0; i < upto + 1; i++) {
-                for (auto& node : nodes) {
+            for (auto& node : nodes) {
+                for (int i = 0; i < upto + 1; i++) {
                     if (std::get<0>(node) == visited[i]) {
                         shape.setPosition(std::get<1>(node), std::get<2>(node));
                         window.draw(shape);
+                        break;
                     }
                 }
             }

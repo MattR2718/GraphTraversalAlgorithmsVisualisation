@@ -1,24 +1,20 @@
 #include <vector>
-#include <map>
 #include <stack>
+#include <map>
 
-std::vector<int> depthFirst(std::map<int, std::vector<int>>& adj, int start)
-{
-    std::vector<int> visited;
+std::vector<int> preorder(std::map<int, std::vector<int>>& adj, int start){
     std::stack<int> stack;
-    visited.emplace_back(start);
+    std::vector<int> visited;
     stack.push(start);
-
-    while (stack.size() > 0) {
+    //visited.emplace_back(start);
+    while(!stack.empty()){
         int curr = stack.top();
         stack.pop();
-
+        visited.emplace_back(curr);
         for(int i = adj[curr].size() - 1; i > -1; i--){
             if(std::find(visited.begin(), visited.end(), adj[curr][i]) == visited.end()){ stack.push(adj[curr][i]); }
         }
-        visited.push_back(curr);
-
     }
 
-	return visited;
+    return visited;
 }
