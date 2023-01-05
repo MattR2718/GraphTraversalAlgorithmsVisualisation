@@ -5,7 +5,7 @@ find_package(SFML REQUIRED COMPONENTS graphics system window)
 find_package(imgui CONFIG REQUIRED)
 find_package(ImGui-SFML CONFIG REQUIRED)
 
-add_executable(${PROJECT_NAME} main.cpp algorithms.cpp)
+add_executable(${PROJECT_NAME} main.cpp)
 
 target_link_libraries(${PROJECT_NAME}
     imgui::imgui

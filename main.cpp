@@ -6,7 +6,8 @@
 #include <imgui-SFML.h>
 #include <imgui.h>
 
-#include "algorithms.h"
+#include "breadthfirst.h"
+#include "depthfirst.h"
 
 int insideNode(std::vector<std::tuple<int, int, int>>& nodes, sf::Vector2i& pos, float& r, bool draw) {
     for (auto& node : nodes) {
@@ -29,25 +30,20 @@ sf::Color makeColour(float colour[3]) {
 
 void cleanList(std::map<int, std::vector<int>>& adjacencyList, int& nodeIn, std::vector<std::tuple<int, int, int>> nodes) {
     adjacencyList.erase(nodeIn);
-    //std::cout << "6\n";
     for (auto& node : nodes) {
-        //std::cout << "6.5\n";
-        //std::cout << "NODEIN: " << nodeIn << "NODEINDEX" << std::get<0>(node) << '\n';
         if (std::get<0>(node) == nodeIn) {
             if (adjacencyList[std::get<0>(node)][0] == nodeIn) {
-                //std::cout << "7\n";
                 adjacencyList[std::get<0>(node)].erase(adjacencyList[std::get<0>(node)].begin());
             }
             else if ((adjacencyList[std::get<0>(node)].size() == 2) && (adjacencyList[std::get<0>(node)][1] == nodeIn)) {
-                //std::cout << "8\n";
                 adjacencyList[std::get<0>(node)].erase(adjacencyList[std::get<0>(node)].begin() + 1);
             }
         }
     }
-    //std::cout << "8\n";
 }
 
 void connectNodes(int connect[2], std::map<int, std::vector<int>>& adjacencyList) {
+    if(connect[0] == connect[1]){ return; }
     // Make checks for more than two connections and being connected to by more than one
     adjacencyList[connect[0]].push_back(connect[1]);
     adjacencyList[connect[1]].push_back(connect[0]);
@@ -68,11 +64,24 @@ void reset(std::vector<std::tuple<int, int, int>>& nodes, std::map<int, std::vec
     nodeIndex = 0;
 }
 
+void printAdj(std::map<int, std::vector<int>>& adj){
+    std::cout<<"--------------------------\n";
+    for(auto& a : adj){
+        std::cout<<a.first<<": ";
+        for(auto& s : a.second){ std::cout<<s<<' '; }
+        std::cout<<'\n';
+    }
+    std::cout<<'\n';
+    std::cout<<"--------------------------\n";
+
+}
+
 int main()
 {
-    constexpr int WIDTH = 800;
-    constexpr int HEIGHT = 800;
+    constexpr int WIDTH = 1400;
+    constexpr int HEIGHT = 950;
     sf::RenderWindow window(sf::VideoMode(WIDTH, HEIGHT), "Graph Traversal Algorithms");
+    window.setPosition(sf::Vector2i(0, 0));
 
     auto image = sf::Image{};
     //https://www.flaticon.com/authors/dreamstale
@@ -83,6 +92,7 @@ int main()
     window.setIcon(image.getSize().x, image.getSize().y, image.getPixelsPtr());
     ImGui::SFML::Init(window);
 
+    //                     <id,  x,   y>
     std::vector<std::tuple<int, int, int>> nodes;
     int nodeIndex = 0;
     std::map<int, std::vector<int>> adjacencyList;
@@ -95,8 +105,10 @@ int main()
     float bgColour[3] = { (float)18 / 255, (float)33 / 255, (float)43 / 255 };
     float edgeColour[3] = { (float)255 / 255, (float)255 / 255, (float)255 / 255 };
     float selectColour[3] = { (float)50 / 255, (float)255 / 255, (float)50 / 255 };
-    float visitColour[3] = { (float)255 / 255, (float)50 / 255, (float)50 / 255 };
+    float visitColour[3] = { (float)0 / 255, (float)17 / 255, (float)191 / 255 };
+    float startColour[3] = { (float)255 / 255, (float)255 / 255, (float)255 / 255 };
     
+    int startNode = 0;
 
     int coolDown = 0;
     int upto = 0;
@@ -147,14 +159,18 @@ int main()
             else if ((!running) && (coolDown > 100) && (sf::Mouse::isButtonPressed(sf::Mouse::Left))) {
                 sf::Vector2i pos = sf::Mouse::getPosition(window);
                 int nodeIn = insideNode(nodes, pos, nodeRadius, false);
-                if (connect[0] == -1) {
-                    connect[0] = nodeIn;
-                }
-                else if (connect[1] == -1) {
-                    connect[1] = nodeIn;
-                    connectNodes(connect, adjacencyList);
-                    connect[0] = -1;
-                    connect[1] = -1;
+                if(sf::Keyboard::isKeyPressed(sf::Keyboard::LControl)){
+                    startNode = nodeIn;
+                }else{
+                    if (connect[0] == -1) {
+                        connect[0] = nodeIn;
+                    }
+                    else if (connect[1] == -1) {
+                        connect[1] = nodeIn;
+                        connectNodes(connect, adjacencyList);
+                        connect[0] = -1;
+                        connect[1] = -1;
+                    }
                 }
             }
         }
@@ -164,7 +180,7 @@ int main()
         ImGui::SFML::Update(window, deltaClock.restart());
 
         ImGui::Begin("Customise");
-        ImGui::Text("%i", nodes.size());
+        ImGui::Text("Number of nodes: %i", nodes.size());
         ImGui::Checkbox("Show Nodes", &showNodes);
         ImGui::SliderFloat("Node Size", &nodeRadius, 0.0f, 100.0f);
         ImGui::SliderInt("Sides", &circleSegments, 3, 150);
@@ -173,6 +189,7 @@ int main()
         ImGui::ColorEdit3("Selected Colour", selectColour);
         ImGui::ColorEdit3("Background Colour", bgColour);
         ImGui::ColorEdit3("Visiting Colour", visitColour);
+        ImGui::ColorEdit3("Start Colour", startColour);
         if (ImGui::Button("Clear All Nodes")) {
             reset(nodes, adjacencyList, nodeIndex);
             running = false;
@@ -182,20 +199,21 @@ int main()
         ImGui::Begin("Algorithms");
         const char* items[] = { "Depth First", "Breadth First", "Preorder"};
         static int item_current = 0;
-        ImGui::ListBox("listbox", &item_current, items, IM_ARRAYSIZE(items), (int)(sizeof(items) / sizeof(*items)));
+        ImGui::ListBox("##", &item_current, items, IM_ARRAYSIZE(items), (int)(sizeof(items) / sizeof(*items)));
         if (ImGui::Button("Traverse")) {
+            printAdj(adjacencyList);
             running = true;
             visited.clear();
             switch (item_current) {
             case 0:
-                visited = depthFirst(adjacencyList, 0);
+                visited = depthFirst(adjacencyList, startNode);
                 break;
             case 1:
-                visited = breadthFirst(adjacencyList, 0);
+                visited = breadthFirst(adjacencyList, startNode);
                 break;
             case 2:
                 //std::cout << "TETETET\n";
-                preOrder(adjacencyList, 0, visited);
+                //preOrder(adjacencyList, 0, visited);
                 break;
             }
             /* for (auto& f : visited) {
@@ -204,6 +222,20 @@ int main()
             std::cout << '\n'; */
         }
         if (ImGui::Button("Stop")) { running = false; }
+        ImGui::End();
+
+        ImGui::Begin("Instructions");
+        ImGui::BulletText("RClick to add and remove nodes");
+        ImGui::BulletText("LClick to select nodes");
+        ImGui::Indent();
+        ImGui::BulletText("Select two nodes to connect them");
+        ImGui::Unindent();
+        ImGui::BulletText("CTRL+RClick to set start node");
+        ImGui::End();
+
+        ImGui::Begin("Adjacency List", NULL, ImGuiWindowFlags_NoTitleBar);
+        ImGui::SetWindowPos(ImVec2(1000, 0));
+        ImGui::SetWindowSize(ImVec2(400, HEIGHT));;
         ImGui::End();
 
         window.clear(makeColour(bgColour));
@@ -286,7 +318,11 @@ int main()
             shape.setOrigin(nodeRadius, nodeRadius);
             shape.setPosition(std::get<1>(node), std::get<2>(node));
             shape.setPointCount(circleSegments);
-            shape.setFillColor(makeColour(nodeColour));
+            if(std::get<0>(node) == startNode){
+                shape.setFillColor(makeColour(startColour));
+            }else{
+                shape.setFillColor(makeColour(nodeColour));
+            }
             if (showNodes) {
                 window.draw(shape);
             }
