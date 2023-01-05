@@ -1,3 +1,3 @@
 # GraphTraversalAlgorithmsVisualisation
 
-![Window](imgs/windowView.JPG)
+![Window](imgs/example.gif)
