@@ -44,6 +44,7 @@ void cleanList(std::map<int, std::vector<int>>& adjacencyList, int& nodeIn, std:
 
 void connectNodes(int connect[2], std::map<int, std::vector<int>>& adjacencyList) {
     if(connect[0] == connect[1]){ return; }
+    if(std::find(adjacencyList[connect[0]].begin(), adjacencyList[connect[0]].end(), connect[1]) != adjacencyList[connect[0]].end()){ return; }
     // Make checks for more than two connections and being connected to by more than one
     adjacencyList[connect[0]].push_back(connect[1]);
     adjacencyList[connect[1]].push_back(connect[0]);
@@ -161,6 +162,7 @@ int main()
                 int nodeIn = insideNode(nodes, pos, nodeRadius, false);
                 if(sf::Keyboard::isKeyPressed(sf::Keyboard::LControl)){
                     startNode = nodeIn;
+                    at = startNode;
                 }else{
                     if (connect[0] == -1) {
                         connect[0] = nodeIn;
@@ -179,63 +181,90 @@ int main()
 
         ImGui::SFML::Update(window, deltaClock.restart());
 
-        ImGui::Begin("Customise");
-        ImGui::Text("Number of nodes: %i", nodes.size());
-        ImGui::Checkbox("Show Nodes", &showNodes);
-        ImGui::SliderFloat("Node Size", &nodeRadius, 0.0f, 100.0f);
-        ImGui::SliderInt("Sides", &circleSegments, 3, 150);
-        ImGui::ColorEdit3("Node Colour", nodeColour);
-        ImGui::ColorEdit3("Edge Colour", edgeColour);
-        ImGui::ColorEdit3("Selected Colour", selectColour);
-        ImGui::ColorEdit3("Background Colour", bgColour);
-        ImGui::ColorEdit3("Visiting Colour", visitColour);
-        ImGui::ColorEdit3("Start Colour", startColour);
-        if (ImGui::Button("Clear All Nodes")) {
-            reset(nodes, adjacencyList, nodeIndex);
-            running = false;
-        }
-        ImGui::End();
+        //ImGui::ShowDemoWindow();
 
-        ImGui::Begin("Algorithms");
-        const char* items[] = { "Depth First", "Breadth First", "Preorder"};
-        static int item_current = 0;
-        ImGui::ListBox("##", &item_current, items, IM_ARRAYSIZE(items), (int)(sizeof(items) / sizeof(*items)));
-        if (ImGui::Button("Traverse")) {
-            printAdj(adjacencyList);
-            running = true;
-            visited.clear();
-            switch (item_current) {
-            case 0:
-                visited = depthFirst(adjacencyList, startNode);
-                break;
-            case 1:
-                visited = breadthFirst(adjacencyList, startNode);
-                break;
-            case 2:
-                //std::cout << "TETETET\n";
-                //preOrder(adjacencyList, 0, visited);
-                break;
-            }
-            /* for (auto& f : visited) {
-                std::cout << f << ' ';
-            }
-            std::cout << '\n'; */
-        }
-        if (ImGui::Button("Stop")) { running = false; }
-        ImGui::End();
+        ImGui::Begin("##", NULL, ImGuiWindowFlags_AlwaysAutoResize);
+        ImGui::SetWindowPos(ImVec2(0, 0));
 
-        ImGui::Begin("Instructions");
-        ImGui::BulletText("RClick to add and remove nodes");
-        ImGui::BulletText("LClick to select nodes");
-        ImGui::Indent();
-        ImGui::BulletText("Select two nodes to connect them");
-        ImGui::Unindent();
-        ImGui::BulletText("CTRL+RClick to set start node");
+        ImGui::SetNextItemOpen(true);
+        if(ImGui::CollapsingHeader("Instructions")){
+            //ImGui::Begin("Instructions", NULL, ImGuiWindowFlags_AlwaysAutoResize);
+            ImGui::BulletText("RClick to add and remove nodes");
+            ImGui::BulletText("LClick to select nodes");
+            ImGui::Indent();
+            ImGui::BulletText("Select two nodes to connect them");
+            ImGui::Unindent();
+            ImGui::BulletText("CTRL+RClick to set start node");
+            //ImGui::End();
+        }
+
+        ImGui::SetNextItemOpen(true);
+        if(ImGui::CollapsingHeader("Algorithms")){
+            //ImGui::Begin("Algorithms", NULL, ImGuiWindowFlags_AlwaysAutoResize);
+            const char* items[] = { "Depth First", "Breadth First", "Preorder"};
+            static int item_current = 0;
+            ImGui::ListBox("##", &item_current, items, IM_ARRAYSIZE(items), (int)(sizeof(items) / sizeof(*items)));
+            if (ImGui::Button("Traverse")) {
+                //printAdj(adjacencyList);
+                running = true;
+                visited.clear();
+                switch (item_current) {
+                case 0:
+                    visited = depthFirst(adjacencyList, startNode);
+                    break;
+                case 1:
+                    visited = breadthFirst(adjacencyList, startNode);
+                    break;
+                case 2:
+                    //std::cout << "TETETET\n";
+                    //preOrder(adjacencyList, 0, visited);
+                    break;
+                }
+                /* for (auto& f : visited) {
+                    std::cout << f << ' ';
+                }
+                std::cout << '\n'; */
+            }
+            if (ImGui::Button("Stop")) { running = false; }
+            //ImGui::End();
+        }
+
+        ImGui::SetNextItemOpen(true);
+        if(ImGui::CollapsingHeader("Customise")){
+            //ImGui::Begin("Customise", NULL, ImGuiWindowFlags_AlwaysAutoResize);
+            ImGui::Text("Number of nodes: %i", nodes.size());
+            ImGui::Checkbox("Show Nodes", &showNodes);
+            ImGui::SliderFloat("Node Size", &nodeRadius, 0.0f, 100.0f);
+            ImGui::SliderInt("Sides", &circleSegments, 3, 150);
+            ImGui::ColorEdit3("Node Colour", nodeColour);
+            ImGui::ColorEdit3("Edge Colour", edgeColour);
+            ImGui::ColorEdit3("Selected Colour", selectColour);
+            ImGui::ColorEdit3("Background Colour", bgColour);
+            ImGui::ColorEdit3("Visiting Colour", visitColour);
+            ImGui::ColorEdit3("Start Colour", startColour);
+            if (ImGui::Button("Clear All Nodes")) {
+                reset(nodes, adjacencyList, nodeIndex);
+                at = 0;
+                running = false;
+            }
+            //ImGui::End();
+        }
+
         ImGui::End();
 
         ImGui::Begin("Adjacency List", NULL, ImGuiWindowFlags_NoTitleBar);
         ImGui::SetWindowPos(ImVec2(1000, 0));
-        ImGui::SetWindowSize(ImVec2(400, HEIGHT));;
+        ImGui::SetWindowSize(ImVec2(400, HEIGHT));
+        std::string s = "";
+        for(auto& a : adjacencyList){
+            s += std::to_string(a.first) + ": ";
+            for(auto& d : a.second){
+                s += std::to_string(d) + " ";
+            }
+            s += "\n";
+        }
+        ImGui::SetWindowFontScale(3.0);
+        ImGui::Text("%s", s.c_str());
         ImGui::End();
 
         window.clear(makeColour(bgColour));
