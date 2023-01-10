@@ -94,7 +94,7 @@ void printAdj(std::map<int, std::vector<int>>& adj){
 
 void loadFiles(std::vector<std::string>& files){
     files.clear();
-    std::regex ex("[.]*\\\\([a-zA-z]+).txt");
+    std::regex ex("[.]*\\\\([a-zA-z0-9]+).txt");
     std::smatch m;
     for(const auto& file : std::filesystem::directory_iterator("../graphs")){
         std::string str = file.path().string();
